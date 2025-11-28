@@ -16,15 +16,15 @@ public enum GNPermissionStatus: Equatable, Sendable {
     case authorized
     case provisional
     case ephemeral
-
+    
     init(_ status: UNAuthorizationStatus) {
         switch status {
-        case .notDetermined: self = .notDetermined
-        case .denied:        self = .denied
-        case .authorized:    self = .authorized
-        case .provisional:   self = .provisional
-        case .ephemeral:     self = .ephemeral
-        @unknown default:    self = .notDetermined
+            case .notDetermined: self = .notDetermined
+            case .denied:        self = .denied
+            case .authorized:    self = .authorized
+            case .provisional:   self = .provisional
+            case .ephemeral:     self = .ephemeral
+            @unknown default:    self = .notDetermined
         }
     }
 }
@@ -35,12 +35,12 @@ public enum GNTimeOffset: Equatable, Sendable {
     case seconds(TimeInterval)
     case minutes(TimeInterval)
     case hours(TimeInterval)
-
+    
     var timeInterval: TimeInterval {
         switch self {
-        case .seconds(let s): return s
-        case .minutes(let m): return m * 60
-        case .hours(let h):   return h * 3600
+            case .seconds(let s): return s
+            case .minutes(let m): return m * 60
+            case .hours(let h):   return h * 3600
         }
     }
 }
@@ -51,25 +51,25 @@ public enum GNNotificationSchedule: Equatable, Sendable {
     case timeInterval(GNTimeOffset, repeats: Bool)
     case calendar(DateComponents, repeats: Bool)
     case exactDate(Date)
-
+    
     func makeTrigger() -> UNNotificationTrigger {
         switch self {
-        case .timeInterval(let offset, let repeats):
-            return UNTimeIntervalNotificationTrigger(
-                timeInterval: max(offset.timeInterval, 1),
-                repeats: repeats
-            )
-        case .calendar(let comps, let repeats):
-            return UNCalendarNotificationTrigger(
-                dateMatching: comps,
-                repeats: repeats
-            )
-        case .exactDate(let date):
-            let comps = Calendar.current.dateComponents(
-                [.year, .month, .day, .hour, .minute, .second],
-                from: date
-            )
-            return UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+            case .timeInterval(let offset, let repeats):
+                return UNTimeIntervalNotificationTrigger(
+                    timeInterval: max(offset.timeInterval, 1),
+                    repeats: repeats
+                )
+            case .calendar(let comps, let repeats):
+                return UNCalendarNotificationTrigger(
+                    dateMatching: comps,
+                    repeats: repeats
+                )
+            case .exactDate(let date):
+                let comps = Calendar.current.dateComponents(
+                    [.year, .month, .day, .hour, .minute, .second],
+                    from: date
+                )
+                return UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
         }
     }
 }
@@ -81,7 +81,7 @@ public struct GNNotificationRequest: Equatable, Sendable {
     public var content: GNNotificationContent
     public var schedule: GNNotificationSchedule
     public var policy: GNNotificationPolicy
-
+    
     public init(
         identifier: String,
         content: GNNotificationContent,
@@ -93,7 +93,7 @@ public struct GNNotificationRequest: Equatable, Sendable {
         self.schedule = schedule
         self.policy = policy
     }
-
+    
     public init(
         identifier: String,
         content: GNNotificationContent,
@@ -106,7 +106,7 @@ public struct GNNotificationRequest: Equatable, Sendable {
             policy: .default
         )
     }
-
+    
     func makeUNRequest() -> UNNotificationRequest {
         let trigger = schedule.makeTrigger()
         let content = self.content.makeUNMutableContent()
@@ -117,4 +117,3 @@ public struct GNNotificationRequest: Equatable, Sendable {
         )
     }
 }
-
