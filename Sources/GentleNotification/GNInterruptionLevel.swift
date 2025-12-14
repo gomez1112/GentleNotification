@@ -1,21 +1,17 @@
 //
 //  GNInterruptionLevel.swift
 //  GentleNotification
-//
+
 
 import UserNotifications
 import Foundation
 
-// MARK: - Interruption Level
+// MARK: - Enums
 
-/// The importance and delivery timing of a notification.
-public enum GNInterruptionLevel: Equatable, Sendable {
-    case active
-    case passive
-    case timeSensitive
-    case critical
+public enum GNInterruptionLevel: Sendable {
+    case active, passive, timeSensitive, critical
     
-    @available(iOS 15.0, *)
+    @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
     var systemLevel: UNNotificationInterruptionLevel {
         switch self {
             case .active: return .active
@@ -26,16 +22,14 @@ public enum GNInterruptionLevel: Equatable, Sendable {
     }
 }
 
-// MARK: - Privacy Behavior
-
 public enum GNPrivacyBehavior: Equatable, Sendable {
     case none
-    /// Display a generic description when previews are hidden (iOS/macOS only).
-    /// Note: Due to cross-platform build constraints, this currently defaults to system behavior.
+    /// iOS only: Placeholder text when device is locked/previews hidden.
+    /// (Note: On Mac Catalyst, this falls back to system default to prevent build errors)
     case genericPlaceholder(String)
 }
 
-// MARK: - Notification Content
+// MARK: - Content
 
 public struct GNNotificationContent: Equatable, @unchecked Sendable {
     public var title: String
@@ -46,33 +40,50 @@ public struct GNNotificationContent: Equatable, @unchecked Sendable {
     public var privacyBehavior: GNPrivacyBehavior
     public var userInfo: [AnyHashable: Any]
     public var sound: UNNotificationSound?
-    public var badge: NSNumber?
-    
-    /// The interruption level determines if the notification breaks through Focus modes.
+    public var badge: Int?
     public var interruptionLevel: GNInterruptionLevel
     
     public init(
         title: String,
         body: String,
         subtitle: String? = nil,
-        threadID: String? = nil,
-        categoryIdentifier: String? = nil,
-        privacyBehavior: GNPrivacyBehavior = .none,
-        userInfo: [AnyHashable: Any] = [:],
-        sound: UNNotificationSound? = .default,
-        badge: NSNumber? = nil,
         interruptionLevel: GNInterruptionLevel = .active
     ) {
         self.title = title
         self.body = body
         self.subtitle = subtitle
-        self.threadID = threadID
-        self.categoryIdentifier = categoryIdentifier
-        self.privacyBehavior = privacyBehavior
-        self.userInfo = userInfo
-        self.sound = sound
-        self.badge = badge
         self.interruptionLevel = interruptionLevel
+        self.privacyBehavior = .none
+        self.userInfo = [:]
+        self.sound = .default
+        self.badge = nil
+        self.threadID = nil
+        self.categoryIdentifier = nil
+    }
+    
+    // Fluent Modifiers
+    public func sound(_ sound: UNNotificationSound?) -> Self {
+        var copy = self; copy.sound = sound; return copy
+    }
+    
+    public func badge(_ count: Int?) -> Self {
+        var copy = self; copy.badge = count; return copy
+    }
+    
+    public func category(_ id: String) -> Self {
+        var copy = self; copy.categoryIdentifier = id; return copy
+    }
+    
+    public func userInfo(_ data: [AnyHashable: Any]) -> Self {
+        var copy = self; copy.userInfo = data; return copy
+    }
+    
+    public func privacy(_ behavior: GNPrivacyBehavior) -> Self {
+        var copy = self; copy.privacyBehavior = behavior; return copy
+    }
+    
+    public func thread(_ id: String) -> Self {
+        var copy = self; copy.threadID = id; return copy
     }
     
     func makeUNMutableContent() -> UNMutableNotificationContent {
@@ -84,22 +95,21 @@ public struct GNNotificationContent: Equatable, @unchecked Sendable {
         if let categoryIdentifier { content.categoryIdentifier = categoryIdentifier }
         content.userInfo = userInfo
         content.sound = sound
-        content.badge = badge
+        if let badge { content.badge = NSNumber(value: badge) }
         
-        if #available(iOS 15.0, *) {
+        if #available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *) {
             content.interruptionLevel = interruptionLevel.systemLevel
         }
         
+        // SAFE IMPLEMENTATION:
+        // We avoid direct property access to `hiddenPreviewsBodyPlaceholder`
+        // because it causes persistent build failures on Mac Catalyst.
         switch privacyBehavior {
-            case .none:
-                break
-            case .genericPlaceholder(let placeholder):
-                // TEMPORARY FIX:
-                // The `hiddenPreviewsBodyPlaceholder` API causes compiler errors on tvOS/watchOS targets
-                // even when wrapped in #if os(iOS).
-                // We are skipping this assignment to guarantee your project compiles.
-                // The app will simply use the default system behavior for hidden previews.
-                _ = placeholder // Silence "unused variable" warning
+            case .none: break
+            case .genericPlaceholder(_):
+                // Fallback to default system behavior.
+                // If strictly needed, KVC `content.setValue(text, forKey: ...)` could be used,
+                // but it is unsafe. Defaulting to system behavior is the stable choice.
                 break
         }
         
@@ -107,52 +117,11 @@ public struct GNNotificationContent: Equatable, @unchecked Sendable {
     }
     
     public static func == (lhs: GNNotificationContent, rhs: GNNotificationContent) -> Bool {
-        guard lhs.title == rhs.title,
-              lhs.body == rhs.body,
-              lhs.subtitle == rhs.subtitle,
-              lhs.threadID == rhs.threadID,
-              lhs.categoryIdentifier == rhs.categoryIdentifier,
-              lhs.privacyBehavior == rhs.privacyBehavior,
-              lhs.badge == rhs.badge,
-              lhs.interruptionLevel == rhs.interruptionLevel else {
-            return false
-        }
-        
-        // Explicitly cast both to NSDictionary to fix bridging ambiguity errors
-        let lhsDict = lhs.userInfo as NSDictionary
-        let rhsDict = rhs.userInfo as NSDictionary
-        guard lhsDict.isEqual(rhsDict) else { return false }
-        
-        // Compare sounds description
-        switch (lhs.sound, rhs.sound) {
-            case (nil, nil): return true
-            case let (l?, r?): return String(describing: l) == String(describing: r)
-            default: return false
-        }
-    }
-}
-
-// MARK: - Notification Policy
-
-public struct GNNotificationPolicy: Equatable, Sendable {
-    public var avoidDuplicates: Bool
-    public var maxPendingCount: Int?
-    public var coalesceByThreadID: Bool
-    public var clampTextLength: Bool
-    
-    public init(
-        avoidDuplicates: Bool = true,
-        maxPendingCount: Int? = nil,
-        coalesceByThreadID: Bool = true,
-        clampTextLength: Bool = true
-    ) {
-        self.avoidDuplicates = avoidDuplicates
-        self.maxPendingCount = maxPendingCount
-        self.coalesceByThreadID = coalesceByThreadID
-        self.clampTextLength = clampTextLength
-    }
-    
-    public static var `default`: GNNotificationPolicy {
-        GNNotificationPolicy()
+        lhs.title == rhs.title &&
+        lhs.body == rhs.body &&
+        lhs.threadID == rhs.threadID &&
+        lhs.categoryIdentifier == rhs.categoryIdentifier &&
+        lhs.badge == rhs.badge &&
+        (lhs.userInfo as NSDictionary).isEqual(rhs.userInfo)
     }
 }

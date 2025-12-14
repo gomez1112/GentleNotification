@@ -5,62 +5,68 @@
 //  Created by Gerard Gomez on 11/27/25.
 //
 
-
 import UserNotifications
 
-public struct GNNotificationActionDescriptor: Equatable, Sendable {
+// MARK: - Action
+
+public struct GNAction: Equatable, Sendable {
     public enum Style: Sendable {
         case normal
         case destructive
+        case foreground
+        case authRequired
+        
+        var options: UNNotificationActionOptions {
+            switch self {
+                case .normal: return []
+                case .destructive: return .destructive
+                case .foreground: return .foreground
+                case .authRequired: return .authenticationRequired
+            }
+        }
     }
     
     public var identifier: String
     public var title: String
     public var style: Style
-    public var options: UNNotificationActionOptions
-    public var symbolName: String?
+    public var icon: String? // SF Symbol name
     
-    public init(
-        identifier: String,
-        title: String,
-        style: Style = .normal,
-        options: UNNotificationActionOptions = [],
-        symbolName: String? = nil
-    ) {
+    public init(_ identifier: String, title: String, style: Style = .normal, icon: String? = nil) {
         self.identifier = identifier
         self.title = title
         self.style = style
-        self.options = options
-        self.symbolName = symbolName
+        self.icon = icon
     }
     
     func makeUNAction() -> UNNotificationAction {
-        let mappedOptions: UNNotificationActionOptions
-        switch style {
-            case .normal: mappedOptions = options
-            case .destructive: mappedOptions = options.union(.destructive)
-        }
+        let options = style.options
         
-        return UNNotificationAction(identifier: identifier, title: title, options: mappedOptions)
+        if let icon, #available(iOS 15.0, macOS 12.0, watchOS 8.0, *) {
+            return UNNotificationAction(identifier: identifier, title: title, options: options, icon: .init(systemImageName: icon))
+        } else {
+            return UNNotificationAction(identifier: identifier, title: title, options: options)
+        }
     }
 }
 
-public struct GNNotificationCategoryDescriptor: Equatable, Sendable {
+// MARK: - Category & Result Builder
+
+public struct GNCategory: Equatable, Sendable {
     public var identifier: String
-    public var actions: [GNNotificationActionDescriptor]
+    public var actions: [GNAction]
     public var intentIdentifiers: [String]
     public var options: UNNotificationCategoryOptions
     
     public init(
-        identifier: String,
-        actions: [GNNotificationActionDescriptor],
+        _ identifier: String,
+        options: UNNotificationCategoryOptions = [],
         intentIdentifiers: [String] = [],
-        options: UNNotificationCategoryOptions = []
+        @GNActionBuilder actions: () -> [GNAction] = { [] }
     ) {
         self.identifier = identifier
-        self.actions = Array(actions.prefix(4))
-        self.intentIdentifiers = intentIdentifiers
         self.options = options
+        self.intentIdentifiers = intentIdentifiers
+        self.actions = Array(actions().prefix(4))
     }
     
     func makeUNCategory() -> UNNotificationCategory {
@@ -71,5 +77,12 @@ public struct GNNotificationCategoryDescriptor: Equatable, Sendable {
             intentIdentifiers: intentIdentifiers,
             options: options
         )
+    }
+}
+
+@resultBuilder
+public struct GNActionBuilder {
+    public static func buildBlock(_ components: GNAction...) -> [GNAction] {
+        components
     }
 }

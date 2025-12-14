@@ -7,17 +7,17 @@
 
 import UserNotifications
 
-import UserNotifications
-
-// MARK: - Foreground Policy
-
 public struct GNForegroundPresentationPolicy: Sendable {
     public var showAlert: Bool
     public var playSound: Bool
     public var setBadge: Bool
     
-    // FIXED: Using computed properties to avoid global state isolation issues.
-    // This allows these to be accessed from any actor/thread safely.
+    public init(showAlert: Bool, playSound: Bool, setBadge: Bool) {
+        self.showAlert = showAlert
+        self.playSound = playSound
+        self.setBadge = setBadge
+    }
+    
     public static var quiet: GNForegroundPresentationPolicy {
         GNForegroundPresentationPolicy(showAlert: false, playSound: false, setBadge: false)
     }
@@ -34,4 +34,3 @@ public struct GNForegroundPresentationPolicy: Sendable {
 public protocol GNForegroundNotificationHandler: AnyObject {
     func presentationPolicy(for notification: UNNotification) -> GNForegroundPresentationPolicy
 }
-
