@@ -25,7 +25,6 @@ public enum GNInterruptionLevel: Sendable {
 public enum GNPrivacyBehavior: Equatable, Sendable {
     case none
     /// iOS only: Placeholder text when device is locked/previews hidden.
-    /// (Note: On Mac Catalyst, this falls back to system default to prevent build errors)
     case genericPlaceholder(String)
 }
 
@@ -61,7 +60,8 @@ public struct GNNotificationContent: Equatable, @unchecked Sendable {
         self.categoryIdentifier = nil
     }
     
-    // Fluent Modifiers
+    // MARK: - Fluent Modifiers
+    
     public func sound(_ sound: UNNotificationSound?) -> Self {
         var copy = self; copy.sound = sound; return copy
     }
@@ -86,6 +86,11 @@ public struct GNNotificationContent: Equatable, @unchecked Sendable {
         var copy = self; copy.threadID = id; return copy
     }
     
+    // THE MISSING FIX:
+    public func interruptionLevel(_ level: GNInterruptionLevel) -> Self {
+        var copy = self; copy.interruptionLevel = level; return copy
+    }
+    
     func makeUNMutableContent() -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         content.title = title
@@ -101,15 +106,10 @@ public struct GNNotificationContent: Equatable, @unchecked Sendable {
             content.interruptionLevel = interruptionLevel.systemLevel
         }
         
-        // SAFE IMPLEMENTATION:
-        // We avoid direct property access to `hiddenPreviewsBodyPlaceholder`
-        // because it causes persistent build failures on Mac Catalyst.
         switch privacyBehavior {
             case .none: break
             case .genericPlaceholder(_):
-                // Fallback to default system behavior.
-                // If strictly needed, KVC `content.setValue(text, forKey: ...)` could be used,
-                // but it is unsafe. Defaulting to system behavior is the stable choice.
+                // Fallback to default system behavior to prevent Catalyst build errors
                 break
         }
         
