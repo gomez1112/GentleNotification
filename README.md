@@ -350,14 +350,3 @@ struct MockCenter: GNLocalNotificationCenter {
 - `GNPermissionStatus`
 - `GNForegroundPresentationPolicy`, `GNForegroundNotificationHandler`
 
----
-
-## Notes
-
-You may see a stray placeholder file in your repo (e.g. “The Swift Programming Language…”). That’s an Xcode template artifact and can safely be deleted if you don’t need it.
-
----
-
-## License
-
-MIT (or your preferred license). Add a `LICENSE` file to your repository to make it explicit.
