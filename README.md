@@ -7,6 +7,7 @@ GentleNotification wraps `UNUserNotificationCenter` into a tiny, testable surfac
 - Request notification authorization with `async/await`
 - Build notification content with **fluent modifiers**
 - Schedule notifications with **time offsets**, **calendar triggers**, or **exact dates**
+- Safely **avoid duplicate identifiers** and **cap pending requests**
 - Register notification categories + actions using a **result builder**
 - Swap the underlying notification center with a **mock client** for tests
 
@@ -18,7 +19,7 @@ GentleNotification wraps `UNUserNotificationCenter` into a tiny, testable surfac
 
 - Swift tools: **Swift 6.2**
 - Platforms (from Package.swift):
-  - iOS **15+**
+  - iOS **26+**
   - macOS **12+**
   - watchOS **8+**
   - tvOS **15+**
@@ -217,6 +218,35 @@ try await Notify.schedule(request)
 
 ---
 
+## Safe Scheduling (Unique IDs + Pending Limits)
+
+Need to ensure identifiers don’t collide or keep a hard cap on pending notifications? Use `scheduleUnique`:
+
+```swift
+let request = GNNotificationRequest(
+    identifier: "daily-summary",
+    content: GNNotificationContent(title: "Summary", body: "Here's your daily recap."),
+    schedule: .calendar(DateComponents(hour: 18, minute: 0), repeats: true)
+)
+
+do {
+    try await Notify.scheduleUnique(request, maxPending: 32)
+} catch GNNotificationError.duplicateIdentifier {
+    print("Already scheduled, skip.")
+} catch GNNotificationError.maxPendingCountReached {
+    print("You reached your pending limit.")
+}
+```
+
+You can also inspect what’s pending:
+
+```swift
+let identifiers = await Notify.pendingIdentifiers()
+print("Pending:", identifiers)
+```
+
+---
+
 ## Categories & Actions
 
 GentleNotification provides a small DSL for defining actions using a result builder.
@@ -316,6 +346,7 @@ struct MockCenter: GNLocalNotificationCenter {
     func authorizationStatus() async -> GNPermissionStatus { .authorized }
     func registerCategories(_ categories: [GNCategory]) async { }
     func schedule(_ request: GNNotificationRequest) async throws { }
+    func pendingRequestIdentifiers() async -> [String] { [] }
     func cancel(withIdentifiers identifiers: [String]) async { }
     func cancelAll() async { }
 }
@@ -337,6 +368,8 @@ struct MockCenter: GNLocalNotificationCenter {
   - `permissionStatus()`
   - `schedule(title:body:in:threadID:)`
   - `schedule(_ request:)`
+  - `scheduleUnique(_:maxPending:)`
+  - `pendingIdentifiers()`
   - `registerCategories(...)`
   - `cancel(...)`, `cancelAll()`
 - `GNNotificationContent`
@@ -349,4 +382,3 @@ struct MockCenter: GNLocalNotificationCenter {
 - `GNAction`, `GNCategory`, `GNActionBuilder`
 - `GNPermissionStatus`
 - `GNForegroundPresentationPolicy`, `GNForegroundNotificationHandler`
-
