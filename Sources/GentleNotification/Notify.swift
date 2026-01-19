@@ -55,6 +55,26 @@ public enum Notify {
         try await client.schedule(request)
         return request.identifier
     }
+
+    @discardableResult
+    public static func scheduleUnique(
+        _ request: GNNotificationRequest,
+        maxPending: Int? = nil
+    ) async throws -> String {
+        let pendingIdentifiers = await client.pendingRequestIdentifiers()
+        if pendingIdentifiers.contains(request.identifier) {
+            throw GNNotificationError.duplicateIdentifier
+        }
+        if let maxPending, pendingIdentifiers.count >= maxPending {
+            throw GNNotificationError.maxPendingCountReached
+        }
+        try await client.schedule(request)
+        return request.identifier
+    }
+
+    public static func pendingIdentifiers() async -> [String] {
+        await client.pendingRequestIdentifiers()
+    }
     
     public static func registerCategories(_ categories: [GNCategory]) async {
         await client.registerCategories(categories)

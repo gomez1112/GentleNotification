@@ -17,6 +17,7 @@ public protocol GNLocalNotificationCenter: Sendable {
     func authorizationStatus() async -> GNPermissionStatus
     func registerCategories(_ categories: [GNCategory]) async
     func schedule(_ request: GNNotificationRequest) async throws
+    func pendingRequestIdentifiers() async -> [String]
     func cancel(withIdentifiers identifiers: [String]) async
     func cancelAll() async
 }
@@ -44,6 +45,14 @@ public final class UNLocalNotificationCenterClient: GNLocalNotificationCenter, S
     
     public func schedule(_ request: GNNotificationRequest) async throws {
         try await center.add(request.makeUNRequest())
+    }
+
+    public func pendingRequestIdentifiers() async -> [String] {
+        await withCheckedContinuation { continuation in
+            center.getPendingNotificationRequests { requests in
+                continuation.resume(returning: requests.map(\.identifier))
+            }
+        }
     }
     
     public func cancel(withIdentifiers identifiers: [String]) async {
