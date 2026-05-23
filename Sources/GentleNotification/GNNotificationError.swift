@@ -20,6 +20,9 @@ public protocol GNLocalNotificationCenter: Sendable {
     func pendingRequestIdentifiers() async -> [String]
     func cancel(withIdentifiers identifiers: [String]) async
     func cancelAll() async
+    func deliveredIdentifiers() async -> [String]
+    func cancelDelivered(withIdentifiers identifiers: [String]) async
+    func cancelAllDelivered() async
 }
 
 public final class UNLocalNotificationCenterClient: GNLocalNotificationCenter, Sendable {
@@ -61,5 +64,21 @@ public final class UNLocalNotificationCenterClient: GNLocalNotificationCenter, S
     
     public func cancelAll() async {
         center.removeAllPendingNotificationRequests()
+    }
+
+    public func deliveredIdentifiers() async -> [String] {
+        await withCheckedContinuation { continuation in
+            center.getDeliveredNotifications { notifications in
+                continuation.resume(returning: notifications.map(\.request.identifier))
+            }
+        }
+    }
+
+    public func cancelDelivered(withIdentifiers identifiers: [String]) async {
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)
+    }
+
+    public func cancelAllDelivered() async {
+        center.removeAllDeliveredNotifications()
     }
 }
