@@ -8,6 +8,7 @@ GentleNotification wraps `UNUserNotificationCenter` into a tiny, testable surfac
 - Build notification content with **fluent modifiers**
 - Schedule notifications with **time offsets**, **calendar triggers**, or **exact dates**
 - Safely **avoid duplicate identifiers** and **cap pending requests**
+- Inspect and manage both **pending** and **delivered** notifications
 - Register notification categories + actions using a **result builder**
 - Swap the underlying notification center with a **mock client** for tests
 
@@ -245,6 +246,18 @@ let identifiers = await Notify.pendingIdentifiers()
 print("Pending:", identifiers)
 ```
 
+
+You can also inspect and clear delivered notifications:
+
+```swift
+let delivered = await Notify.deliveredIdentifiers()
+print("Delivered:", delivered)
+
+await Notify.cancelDelivered(id: "daily-summary")
+await Notify.cancelDelivered(ids: delivered)
+await Notify.cancelAllDelivered()
+```
+
 ---
 
 ## Categories & Actions
@@ -349,6 +362,9 @@ struct MockCenter: GNLocalNotificationCenter {
     func pendingRequestIdentifiers() async -> [String] { [] }
     func cancel(withIdentifiers identifiers: [String]) async { }
     func cancelAll() async { }
+    func deliveredIdentifiers() async -> [String] { [] }
+    func cancelDelivered(withIdentifiers identifiers: [String]) async { }
+    func cancelAllDelivered() async { }
 }
 
 @Test func scheduleBuildsRequest() async throws {
@@ -372,6 +388,8 @@ struct MockCenter: GNLocalNotificationCenter {
   - `pendingIdentifiers()`
   - `registerCategories(...)`
   - `cancel(...)`, `cancelAll()`
+  - `deliveredIdentifiers()`
+  - `cancelDelivered(id:)`, `cancelDelivered(ids:)`, `cancelAllDelivered()`
 - `GNNotificationContent`
   - properties for `title`, `body`, etc.
   - fluent modifiers: `.sound`, `.badge`, `.category`, `.thread`, `.userInfo`, `.privacy`, `.interruptionLevel`

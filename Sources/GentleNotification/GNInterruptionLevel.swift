@@ -119,9 +119,13 @@ public struct GNNotificationContent: Equatable, @unchecked Sendable {
     public static func == (lhs: GNNotificationContent, rhs: GNNotificationContent) -> Bool {
         lhs.title == rhs.title &&
         lhs.body == rhs.body &&
+        lhs.subtitle == rhs.subtitle &&
         lhs.threadID == rhs.threadID &&
         lhs.categoryIdentifier == rhs.categoryIdentifier &&
+        lhs.privacyBehavior == rhs.privacyBehavior &&
         lhs.badge == rhs.badge &&
+        lhs.interruptionLevel == rhs.interruptionLevel &&
+        lhs.sound == rhs.sound &&
         (lhs.userInfo as NSDictionary).isEqual(rhs.userInfo)
     }
 }

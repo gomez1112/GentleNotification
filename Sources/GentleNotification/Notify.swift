@@ -95,4 +95,20 @@ public enum Notify {
     public static func cancelAll() async {
         await client.cancelAll()
     }
+
+    public static func deliveredIdentifiers() async -> [String] {
+        await client.deliveredIdentifiers()
+    }
+
+    public static func cancelDelivered(ids: [String]) async {
+        await client.cancelDelivered(withIdentifiers: ids)
+    }
+
+    public static func cancelDelivered(id: String) async {
+        await client.cancelDelivered(withIdentifiers: [id])
+    }
+
+    public static func cancelAllDelivered() async {
+        await client.cancelAllDelivered()
+    }
 }
